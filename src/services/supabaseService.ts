@@ -146,6 +146,22 @@ export class SupabaseService {
       .single();
 
     if (error) throw error;
+    // After creating the exam, assign it to all registered students
+    try {
+      const { data: students, error: studentsError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role', 'student');
+
+      if (!studentsError && Array.isArray(students) && students.length > 0) {
+        const studentIds = students.map((s: any) => s.id);
+        // Use the bulk assignment helper to insert into exam_assignments
+        await this.assignExamToMultipleStudents(data.id ?? data._id ?? data, studentIds);
+      }
+    } catch (assignErr) {
+      console.warn('Failed to auto-assign exam to students:', assignErr);
+    }
+
     return data;
   }
 

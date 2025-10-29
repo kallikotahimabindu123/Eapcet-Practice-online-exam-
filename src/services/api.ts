@@ -496,10 +496,11 @@ class ApiService {
 
   async createExam(examData: any) {
     await delay(1000);
+    const assigned = mockUsers.filter(u => u.role === 'student').map(u => u.id);
     const newExam = {
       _id: Date.now().toString(),
       ...examData,
-      assignedStudents: [],
+      assignedStudents: assigned,
       totalMarks: 0
     };
     mockExams.push(newExam);
