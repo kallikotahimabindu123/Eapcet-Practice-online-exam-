@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 // Minimal types to avoid import errors if your types file differs
 type UserProfile = any;
@@ -65,6 +65,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, 20000);
 
     (async () => {
+      if (!isSupabaseConfigured) {
+        console.error('AuthProvider: supabase not configured, aborting init');
+        // Surface a clear UI-visible error and stop the init path so other code doesn't call the SDK
+        if (mounted) {
+          setError('Supabase not configured: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY and restart the dev server.');
+          setIsLoading(false);
+        }
+        return;
+      }
       try {
         // guard against supabase hanging by adding a small timeout
         const getSessionPromise = supabase.auth.getSession();
@@ -173,6 +182,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const cleanEmail = email.trim();
       console.log('AuthContext: login attempt', { cleanEmail });
+      if (!isSupabaseConfigured) {
+        const msg = 'Supabase API key or URL missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY and restart the dev server.';
+        setError(msg);
+        console.error('AuthContext: login aborted - supabase not configured');
+        return false;
+      }
 
       // guard sign-in with a timeout so the UI doesn't hang forever
       // Use a direct signIn call (no retry wrapper) to avoid masking SDK behaviour.
@@ -181,7 +196,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const { data, error } = signInResp;
       console.log('AuthContext: signInWithPassword response', { data, error, signInResp });
       if (error) {
-        setError(error.message || 'Login failed');
+        // Map common low-level error texts to clearer guidance
+        const msgLow = (error?.message || '').toString().toLowerCase();
+        if (msgLow.includes('no api key') || msgLow.includes('invalid api key') || msgLow.includes('apikey')) {
+          setError('Supabase API key invalid or missing. Set VITE_SUPABASE_ANON_KEY in your environment and restart the dev server.');
+        } else {
+          setError(error.message || 'Login failed');
+        }
         return false;
       }
       const userData = data?.user;

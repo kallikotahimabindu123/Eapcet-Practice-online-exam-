@@ -3,11 +3,16 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+// Expose a flag so other modules can show a clear, actionable error to the user
+export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+if (!isSupabaseConfigured) {
   // Friendly runtime error so you see it in console immediately
   console.error('Missing Supabase env. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set and restart dev server.');
 }
 
+// Create the client even when env is missing (some tests / mocks import it),
+// but other modules should check `isSupabaseConfigured` and avoid calling network functions.
 export const supabase = createClient(SUPABASE_URL ?? '', SUPABASE_ANON_KEY ?? '');
 
 
