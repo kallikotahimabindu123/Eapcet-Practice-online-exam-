@@ -55,7 +55,7 @@ const mockExams = loadFromStorage<any[]>(STORAGE_KEYS.exams, [
   }
 ]);
 
-const mockQuestions = loadFromStorage<Record<string, any[]>>(STORAGE_KEYS.questions, {
+const defaultMockQuestions: Record<string, any[]> = {
   mathematics: [
     {
       _id: '1',
@@ -70,11 +70,219 @@ const mockQuestions = loadFromStorage<Record<string, any[]>>(STORAGE_KEYS.questi
       ],
       correctAnswer: 'a',
       marks: 4
+    },
+    {
+      _id: '2',
+      examId: '1',
+      subject: 'mathematics',
+      questionText: 'x² - 5x + 6 = 0 సమీకరణం యొక్క మూలాలు ఏవి?',
+      options: [
+        { id: 'a', text: '2, 3' },
+        { id: 'b', text: '1, 6' },
+        { id: 'c', text: '-2, -3' },
+        { id: 'd', text: '5, 1' }
+      ],
+      correctAnswer: 'a',
+      marks: 4
+    },
+    {
+      _id: '3',
+      examId: '1',
+      subject: 'mathematics',
+      questionText: 'sin²θ + cos²θ = ?',
+      options: [
+        { id: 'a', text: '0' },
+        { id: 'b', text: '1' },
+        { id: 'c', text: '2' },
+        { id: 'd', text: '-1' }
+      ],
+      correctAnswer: 'b',
+      marks: 4
+    },
+    {
+      _id: '4',
+      examId: '1',
+      subject: 'mathematics',
+      questionText: 'ఒక AP లో మొదటి పదం 3, సామాన्य భేదం 4 అయితే 10వ పదం ఎంత?',
+      options: [
+        { id: 'a', text: '39' },
+        { id: 'b', text: '43' },
+        { id: 'c', text: '35' },
+        { id: 'd', text: '47' }
+      ],
+      correctAnswer: 'a',
+      marks: 4
+    },
+    {
+      _id: '5',
+      examId: '1',
+      subject: 'mathematics',
+      questionText: 'log₁₀(100) = ?',
+      options: [
+        { id: 'a', text: '1' },
+        { id: 'b', text: '2' },
+        { id: 'c', text: '10' },
+        { id: 'd', text: '100' }
+      ],
+      correctAnswer: 'b',
+      marks: 4
     }
   ],
-  physics: [],
-  chemistry: []
-});
+  physics: [
+    {
+      _id: '6',
+      examId: '1',
+      subject: 'physics',
+      questionText: 'భూమిపై గురుత్వాకర్షణ త్వరణం ఎంత?',
+      options: [
+        { id: 'a', text: '9.8 మీ/సె²' },
+        { id: 'b', text: '10 మీ/సె²' },
+        { id: 'c', text: '8.9 మీ/సె²' },
+        { id: 'd', text: '11 మీ/సె²' }
+      ],
+      correctAnswer: 'a',
+      marks: 4
+    },
+    {
+      _id: '7',
+      examId: '1',
+      subject: 'physics',
+      questionText: 'కాంతి వేగం ఎంత?',
+      options: [
+        { id: 'a', text: '3 × 10⁸ మీ/సె' },
+        { id: 'b', text: '3 × 10⁶ మీ/సె' },
+        { id: 'c', text: '3 × 10⁷ మీ/సె' },
+        { id: 'd', text: '3 × 10⁹ మీ/సె' }
+      ],
+      correctAnswer: 'a',
+      marks: 4
+    },
+    {
+      _id: '8',
+      examId: '1',
+      subject: 'physics',
+      questionText: 'ఓహ్మ్ నియమం ప్రకారం V = ?',
+      options: [
+        { id: 'a', text: 'I/R' },
+        { id: 'b', text: 'IR' },
+        { id: 'c', text: 'I + R' },
+        { id: 'd', text: 'I - R' }
+      ],
+      correctAnswer: 'b',
+      marks: 4
+    },
+    {
+      _id: '9',
+      examId: '1',
+      subject: 'physics',
+      questionText: 'శక్తి యొక్క SI యూనిట్ ఏది?',
+      options: [
+        { id: 'a', text: 'వాట్ | Watt' },
+        { id: 'b', text: 'జూల్ | Joule' },
+        { id: 'c', text: 'న్యూటన్ | Newton' },
+        { id: 'd', text: 'పాస్కల్ | Pascal' }
+      ],
+      correctAnswer: 'b',
+      marks: 4
+    },
+    {
+      _id: '10',
+      examId: '1',
+      subject: 'physics',
+      questionText: 'ధ్వని గాలిలో ఎంత వేగంతో ప్రయాణిస్తుంది?',
+      options: [
+        { id: 'a', text: '330 మీ/సె | 330 m/s' },
+        { id: 'b', text: '340 మీ/సె | 340 m/s' },
+        { id: 'c', text: '350 మీ/సె | 350 m/s' },
+        { id: 'd', text: '360 మీ/సె | 360 m/s' }
+      ],
+      correctAnswer: 'b',
+      marks: 4
+    }
+  ],
+  chemistry: [
+    {
+      _id: '11',
+      examId: '1',
+      subject: 'chemistry',
+      questionText: 'నీటి రసాయన సూత్రం ఏది?',
+      options: [
+        { id: 'a', text: 'H₂O' },
+        { id: 'b', text: 'CO₂' },
+        { id: 'c', text: 'NH₃' },
+        { id: 'd', text: 'CH₄' }
+      ],
+      correctAnswer: 'a',
+      marks: 4
+    },
+    {
+      _id: '12',
+      examId: '1',
+      subject: 'chemistry',
+      questionText: 'కార్బన్ యొక్క పరమాణు సంఖ్య ఎంత?',
+      options: [
+        { id: 'a', text: '5' },
+        { id: 'b', text: '6' },
+        { id: 'c', text: '7' },
+        { id: 'd', text: '8' }
+      ],
+      correctAnswer: 'b',
+      marks: 4
+    },
+    {
+      _id: '13',
+      examId: '1',
+      subject: 'chemistry',
+      questionText: 'ఆమ్లాలు నీటిలో విడుదల చేసేవి ఏవి?',
+      options: [
+        { id: 'a', text: 'OH⁻ అయాన్లు | OH⁻ ions' },
+        { id: 'b', text: 'H⁺ అయాన్లు | H⁺ ions' },
+        { id: 'c', text: 'Cl⁻ అయాన్లు | Cl⁻ ions' },
+        { id: 'd', text: 'Na⁺ అయాన్లు | Na⁺ ions' }
+      ],
+      correctAnswer: 'b',
+      marks: 4
+    },
+    {
+      _id: '14',
+      examId: '1',
+      subject: 'chemistry',
+      questionText: 'pH స్కేల్ పరిధి ఎంత?',
+      options: [
+        { id: 'a', text: '0-10' },
+        { id: 'b', text: '0-14' },
+        { id: 'c', text: '1-14' },
+        { id: 'd', text: '0-12' }
+      ],
+      correctAnswer: 'b',
+      marks: 4
+    },
+    {
+      _id: '15',
+      examId: '1',
+      subject: 'chemistry',
+      questionText: 'సోడియం క్లోరైడ్ యొక్క రసాయన సూత్రం ఏది?',
+      options: [
+        { id: 'a', text: 'NaCl' },
+        { id: 'b', text: 'Na₂Cl' },
+        { id: 'c', text: 'NaCl₂' },
+        { id: 'd', text: 'Na₂Cl₂' }
+      ],
+      correctAnswer: 'a',
+      marks: 4
+    }
+  ]
+};
+
+let mockQuestions = loadFromStorage<Record<string, any[]>>(STORAGE_KEYS.questions, {} as Record<string, any[]>);
+// If loaded mockQuestions is empty or has very few questions (e.g. due to previous
+// accidental overwrite), re-seed with defaults so built-in exam content is available.
+const existingCount = Object.values(mockQuestions || {}).flat().length;
+const defaultCount = Object.values(defaultMockQuestions).flat().length;
+if (!mockQuestions || existingCount < Math.min(5, defaultCount)) {
+  mockQuestions = defaultMockQuestions;
+  try { saveToStorage(STORAGE_KEYS.questions, mockQuestions); } catch (_) { }
+}
 
 // store submissions for mock reporting
 const mockSubmissions: any[] = loadFromStorage<any[]>(STORAGE_KEYS.submissions, []);
