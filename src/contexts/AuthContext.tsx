@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { apiService } from '../services/api';
 
 // Minimal types to avoid import errors if your types file differs
 type UserProfile = any;
@@ -183,10 +184,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const cleanEmail = email.trim();
       console.log('AuthContext: login attempt', { cleanEmail });
       if (!isSupabaseConfigured) {
-        const msg = 'Supabase API key or URL missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY and restart the dev server.';
-        setError(msg);
-        console.error('AuthContext: login aborted - supabase not configured');
-        return false;
+        // Fall back to local mock API when Supabase isn't configured. This allows
+        // using the app in local/mock mode (useful for development without a Supabase project).
+        try {
+          const resp = await apiService.login(cleanEmail, password);
+          setToken(resp.token ?? null);
+          setUser(resp.user ?? null);
+          return true;
+        } catch (e: any) {
+          const msg = (e && e.message) ? e.message : 'Mock login failed';
+          setError(msg);
+          console.error('AuthContext: mock login failed', e);
+          return false;
+        }
       }
 
       // guard sign-in with a timeout so the UI doesn't hang forever

@@ -216,6 +216,23 @@ const ManageExams: React.FC = () => {
                             Assign Students
                           </button>
                           <button
+                            onClick={async () => {
+                              if (!confirm('Assign this exam to ALL registered students?')) return;
+                              try {
+                                const res = await apiService.assignAllStudents(exam._id);
+                                alert(res?.message || 'Assigned to all students');
+                                // refresh exams to show updated counts
+                                fetchExams();
+                              } catch (err: any) {
+                                console.error('Assign all failed', err);
+                                alert(err?.message || 'Failed to assign all students');
+                              }
+                            }}
+                            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                          >
+                            Assign All
+                          </button>
+                          <button
                             onClick={() => navigate(`/admin/exam-stats/${exam._id}`)}
                             className="text-green-600 hover:text-green-800 text-sm font-medium"
                           >

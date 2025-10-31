@@ -1,13 +1,46 @@
 // Mock API service for frontend-only application
+// When real Supabase env vars are present, delegate to the
+// `supabaseService` so created exams are recorded and auto-assigned to real students.
+import { supabaseService } from './supabaseService';
+
+const USE_SUPABASE = Boolean(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Mock data
-const mockUsers = [
+// Mock data persisted to localStorage so created exams survive reloads in mock mode
+const STORAGE_KEYS = {
+  users: 'mock_users_v1',
+  exams: 'mock_exams_v1',
+  questions: 'mock_questions_v1',
+  submissions: 'mock_submissions_v1',
+  uploads: 'mock_uploads_v1'
+};
+
+const loadFromStorage = <T,>(key: string, fallback: T) => {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch (e) {
+    console.warn('Failed to load mock data from localStorage', key, e);
+    return fallback;
+  }
+};
+
+const saveToStorage = (key: string, value: any) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {
+    console.warn('Failed to persist mock data to localStorage', key, e);
+  }
+};
+
+const defaultUsers = [
   { id: '1', email: 'student@example.com', password: 'password123', name: 'Test Student', role: 'student' },
   { id: '2', email: 'admin@example.com', password: 'admin123', name: 'Admin User', role: 'admin' }
 ];
 
-const mockExams = [
+const mockUsers = loadFromStorage<any[]>(STORAGE_KEYS.users, defaultUsers);
+const mockExams = loadFromStorage<any[]>(STORAGE_KEYS.exams, [
   {
     _id: '1',
     title: 'EAPCET Mock Test - గణితం, భౌతిక శాస్త్రం, రసాయన శాస్త్రం',
@@ -20,9 +53,9 @@ const mockExams = [
     totalMarks: 120,
     has_questions: false
   }
-];
+]);
 
-const mockQuestions = {
+const mockQuestions = loadFromStorage<Record<string, any[]>>(STORAGE_KEYS.questions, {
   mathematics: [
     {
       _id: '1',
@@ -37,214 +70,16 @@ const mockQuestions = {
       ],
       correctAnswer: 'a',
       marks: 4
-    },
-    {
-      _id: '2',
-      examId: '1',
-      subject: 'mathematics',
-      questionText: 'x² - 5x + 6 = 0 సమీకరణం యొక్క మూలాలు ఏవి?',
-      options: [
-        { id: 'a', text: '2, 3' },
-        { id: 'b', text: '1, 6' },
-        { id: 'c', text: '-2, -3' },
-        { id: 'd', text: '5, 1' }
-      ],
-      correctAnswer: 'a',
-      marks: 4
-    },
-    {
-      _id: '3',
-      examId: '1',
-      subject: 'mathematics',
-      questionText: 'sin²θ + cos²θ = ?',
-      options: [
-        { id: 'a', text: '0' },
-        { id: 'b', text: '1' },
-        { id: 'c', text: '2' },
-        { id: 'd', text: '-1' }
-      ],
-      correctAnswer: 'b',
-      marks: 4
-    },
-    {
-      _id: '4',
-      examId: '1',
-      subject: 'mathematics',
-      questionText: 'ఒక AP లో మొదటి పదం 3, సామాన్య భేదం 4 అయితే 10వ పదం ఎంత?',
-      options: [
-        { id: 'a', text: '39' },
-        { id: 'b', text: '43' },
-        { id: 'c', text: '35' },
-        { id: 'd', text: '47' }
-      ],
-      correctAnswer: 'a',
-      marks: 4
-    },
-    {
-      _id: '5',
-      examId: '1',
-      subject: 'mathematics',
-      questionText: 'log₁₀(100) = ?',
-      options: [
-        { id: 'a', text: '1' },
-        { id: 'b', text: '2' },
-        { id: 'c', text: '10' },
-        { id: 'd', text: '100' }
-      ],
-      correctAnswer: 'b',
-      marks: 4
     }
   ],
-  physics: [
-    {
-      _id: '6',
-      examId: '1',
-      subject: 'physics',
-      questionText: 'భూమిపై గురుత్వాకర్షణ త్వరణం ఎంత?',
-      options: [
-        { id: 'a', text: '9.8 మీ/సె²' },
-        { id: 'b', text: '10 మీ/సె²' },
-        { id: 'c', text: '8.9 మీ/సె²' },
-        { id: 'd', text: '11 మీ/సె²' }
-      ],
-      correctAnswer: 'a',
-      marks: 4
-    },
-    {
-      _id: '7',
-      examId: '1',
-      subject: 'physics',
-      questionText: 'కాంతి వేగం ఎంత?',
-      options: [
-        { id: 'a', text: '3 × 10⁸ మీ/సె' },
-        { id: 'b', text: '3 × 10⁶ మీ/సె' },
-        { id: 'c', text: '3 × 10⁷ మీ/సె' },
-        { id: 'd', text: '3 × 10⁹ మీ/సె' }
-      ],
-      correctAnswer: 'a',
-      marks: 4
-    },
-    {
-      _id: '8',
-      examId: '1',
-      subject: 'physics',
-      questionText: 'ఓహ్మ్ నియమం ప్రకారం V = ?',
-      options: [
-        { id: 'a', text: 'I/R' },
-        { id: 'b', text: 'IR' },
-        { id: 'c', text: 'I + R' },
-        { id: 'd', text: 'I - R' }
-      ],
-      correctAnswer: 'b',
-      marks: 4
-    },
-    {
-      _id: '9',
-      examId: '1',
-      subject: 'physics',
-      questionText: 'శక్తి యొక్క SI యూనిట్ ఏది?',
-      options: [
-        { id: 'a', text: 'వాట్ | Watt' },
-        { id: 'b', text: 'జూల్ | Joule' },
-        { id: 'c', text: 'న్యూటన్ | Newton' },
-        { id: 'd', text: 'పాస్కల్ | Pascal' }
-      ],
-      correctAnswer: 'b',
-      marks: 4
-    },
-    {
-      _id: '10',
-      examId: '1',
-      subject: 'physics',
-      questionText: 'ధ్వని గాలిలో ఎంత వేగంతో ప్రయాణిస్తుంది?',
-      options: [
-        { id: 'a', text: '330 మీ/సె | 330 m/s' },
-        { id: 'b', text: '340 మీ/సె | 340 m/s' },
-        { id: 'c', text: '350 మీ/సె | 350 m/s' },
-        { id: 'd', text: '360 మీ/సె | 360 m/s' }
-      ],
-      correctAnswer: 'b',
-      marks: 4
-    }
-  ],
-  chemistry: [
-    {
-      _id: '11',
-      examId: '1',
-      subject: 'chemistry',
-      questionText: 'నీటి రసాయన సూత్రం ఏది?',
-      options: [
-        { id: 'a', text: 'H₂O' },
-        { id: 'b', text: 'CO₂' },
-        { id: 'c', text: 'NH₃' },
-        { id: 'd', text: 'CH₄' }
-      ],
-      correctAnswer: 'a',
-      marks: 4
-    },
-    {
-      _id: '12',
-      examId: '1',
-      subject: 'chemistry',
-      questionText: 'కార్బన్ యొక్క పరమాణు సంఖ్య ఎంత?',
-      options: [
-        { id: 'a', text: '5' },
-        { id: 'b', text: '6' },
-        { id: 'c', text: '7' },
-        { id: 'd', text: '8' }
-      ],
-      correctAnswer: 'b',
-      marks: 4
-    },
-    {
-      _id: '13',
-      examId: '1',
-      subject: 'chemistry',
-      questionText: 'ఆమ్లాలు నీటిలో విడుదల చేసేవి ఏవి?',
-      options: [
-        { id: 'a', text: 'OH⁻ అయాన్లు | OH⁻ ions' },
-        { id: 'b', text: 'H⁺ అయాన్లు | H⁺ ions' },
-        { id: 'c', text: 'Cl⁻ అయాన్లు | Cl⁻ ions' },
-        { id: 'd', text: 'Na⁺ అయాన్లు | Na⁺ ions' }
-      ],
-      correctAnswer: 'b',
-      marks: 4
-    },
-    {
-      _id: '14',
-      examId: '1',
-      subject: 'chemistry',
-      questionText: 'pH స్కేల్ పరిధి ఎంత?',
-      options: [
-        { id: 'a', text: '0-10' },
-        { id: 'b', text: '0-14' },
-        { id: 'c', text: '1-14' },
-        { id: 'd', text: '0-12' }
-      ],
-      correctAnswer: 'b',
-      marks: 4
-    },
-    {
-      _id: '15',
-      examId: '1',
-      subject: 'chemistry',
-      questionText: 'సోడియం క్లోరైడ్ యొక్క రసాయన సూత్రం ఏది?',
-      options: [
-        { id: 'a', text: 'NaCl' },
-        { id: 'b', text: 'Na₂Cl' },
-        { id: 'c', text: 'NaCl₂' },
-        { id: 'd', text: 'Na₂Cl₂' }
-      ],
-      correctAnswer: 'a',
-      marks: 4
-    }
-  ]
-};
+  physics: [],
+  chemistry: []
+});
 
 // store submissions for mock reporting
-const mockSubmissions: any[] = [];
+const mockSubmissions: any[] = loadFromStorage<any[]>(STORAGE_KEYS.submissions, []);
 // store upload metadata (sheet names, uploader file info)
-const mockUploads: any[] = [];
+const mockUploads: any[] = loadFromStorage<any[]>(STORAGE_KEYS.uploads, []);
 class ApiService {
   async login(email: string, password: string) {
     await delay(1000);
@@ -266,8 +101,37 @@ class ApiService {
   }
 
   async register(userData: any) {
+    // If Supabase is configured, use the real sign-up flow which also creates
+    // a profile row in the `users` table via `supabaseService.signUp`.
+    if (USE_SUPABASE) {
+      try {
+        const created = await supabaseService.signUp(
+          typeof userData === 'object' && 'email' in userData ? userData.email : userData.get('email'),
+          typeof userData === 'object' && 'password' in userData ? userData.password : userData.get('password'),
+          userData
+        );
+
+        // Normalize response to same shape as mock
+        const returnedUser = (created as any)?.user ?? (created as any)?.data?.user;
+        const token = (created as any)?.session?.access_token ?? 'supabase-token-' + Date.now();
+
+        return {
+          token,
+          user: {
+            id: returnedUser?.id ?? Date.now().toString(),
+            name: returnedUser?.user_metadata?.name ?? returnedUser?.name ?? (userData.name ?? null),
+            email: returnedUser?.email ?? (typeof userData === 'object' && 'email' in userData ? userData.email : null),
+            role: (returnedUser && ((returnedUser.user_metadata && returnedUser.user_metadata.role) || returnedUser.role)) || (userData.role || 'student')
+          }
+        };
+      } catch (e: any) {
+        console.warn('api.register: supabase signUp failed, falling back to mock', e);
+        // fall through to mock registration
+      }
+    }
+
     await delay(1000);
-    
+
     const email = typeof userData === 'object' && 'get' in userData 
       ? userData.get('email') as string 
       : userData.email;
@@ -292,9 +156,10 @@ class ApiService {
         : userData.password
     };
 
-    mockUsers.push(newUser);
+  mockUsers.push(newUser);
+  try { saveToStorage(STORAGE_KEYS.users, mockUsers); } catch (_) { }
 
-    return {
+  return {
       token: 'mock-jwt-token-' + Date.now(),
       user: {
         id: newUser.id,
@@ -421,7 +286,8 @@ class ApiService {
         timeTaken,
         submittedAt: new Date().toISOString()
       };
-      mockSubmissions.push(record);
+  mockSubmissions.push(record);
+  try { saveToStorage(STORAGE_KEYS.submissions, mockSubmissions); } catch (_) { }
       // Return the same shape as submitExam but attach the stored record for inspection
       return {
         ...res,
@@ -442,8 +308,9 @@ class ApiService {
       result: res.results,
       submittedAt: new Date().toISOString()
     };
-    mockSubmissions.push(record);
-    return record;
+  mockSubmissions.push(record);
+  try { saveToStorage(STORAGE_KEYS.submissions, mockSubmissions); } catch (_) { }
+  return record;
   }
 
   // Save metadata about an uploaded Excel sheet (admin-provided name + file info)
@@ -459,8 +326,9 @@ class ApiService {
         fileName,
         uploadedAt: new Date().toISOString()
       };
-      mockUploads.push(record);
-      return record;
+  mockUploads.push(record);
+  try { saveToStorage(STORAGE_KEYS.uploads, mockUploads); } catch (_) { }
+  return record;
     } catch (e: any) {
       throw new Error(e?.message || 'Failed to save upload metadata');
     }
@@ -495,6 +363,35 @@ class ApiService {
   }
 
   async createExam(examData: any) {
+    // If Supabase is configured, use the real service which will auto-assign
+    // the exam to all registered students (see supabaseService.createExam).
+    if (USE_SUPABASE) {
+      try {
+        const created = await supabaseService.createExam(examData, 'admin');
+        // Normalize DB row to frontend mock shape used across the app
+        const normalized = {
+          _id: created.id ?? created._id ?? String(created),
+          title: created.title,
+          description: created.description,
+          active: created.active ?? created.is_active ?? true,
+          startTime: created.start_time ?? created.startTime,
+          endTime: created.end_time ?? created.endTime,
+          duration: created.duration,
+          assignedStudents: Array.isArray(created.assigned_students) ? created.assigned_students : [],
+          totalMarks: created.total_marks ?? created.totalMarks ?? 0,
+          has_questions: !!created.has_questions
+        };
+  // Keep a small delay to mimic the mock behaviour for UI consistency
+  await delay(200);
+  mockExams.push(normalized);
+  try { saveToStorage(STORAGE_KEYS.exams, mockExams); } catch (_) { }
+  return normalized;
+      } catch (e) {
+        // fallback to mock behaviour if Supabase call fails
+        console.warn('api.createExam: supabase create failed, falling back to mock', e);
+      }
+    }
+
     await delay(1000);
     const assigned = mockUsers.filter(u => u.role === 'student').map(u => u.id);
     const newExam = {
@@ -503,11 +400,44 @@ class ApiService {
       assignedStudents: assigned,
       totalMarks: 0
     };
-    mockExams.push(newExam);
-    return newExam;
+  mockExams.push(newExam);
+  try { saveToStorage(STORAGE_KEYS.exams, mockExams); } catch (_) { }
+  return newExam;
   }
 
   async getAllExams() {
+    // If Supabase configured, fetch from DB and normalize to mock shape
+    if (USE_SUPABASE) {
+      try {
+        const exams = await supabaseService.getExams();
+        const normalized = (exams || []).map((e: any) => ({
+          _id: e.id ?? e._id ?? String(e.id ?? Date.now()),
+          title: e.title,
+          description: e.description,
+          active: e.active ?? e.is_active ?? false,
+          startTime: e.start_time ?? e.startTime,
+          endTime: e.end_time ?? e.endTime,
+          duration: e.duration,
+          assignedStudents: Array.isArray(e.assigned_students) ? e.assigned_students : [],
+          totalMarks: e.total_marks ?? e.totalMarks ?? 0,
+          has_questions: !!e.has_questions
+        }));
+
+        // Also include any locally-created mock exams that couldn't be persisted to Supabase
+        // (happens when createExam fell back to mock). Avoid duplicates by _id.
+        const dbIds = new Set(normalized.map((e: any) => e._id));
+        const merged = [
+          ...normalized,
+          ...mockExams.filter((m) => !dbIds.has(m._id))
+        ];
+
+        await delay(200);
+        return merged;
+      } catch (err) {
+        console.warn('api.getAllExams: supabase fetch failed, falling back to mock', err);
+      }
+    }
+
     await delay(500);
     return mockExams;
   }
@@ -531,6 +461,7 @@ class ApiService {
     const subject = questionData.subject as keyof typeof mockQuestions;
     if (mockQuestions[subject]) {
       mockQuestions[subject].push(newQuestion);
+      try { saveToStorage(STORAGE_KEYS.questions, mockQuestions); } catch (_) { }
     }
     
     return newQuestion;
@@ -578,6 +509,10 @@ class ApiService {
         }
       }
 
+      // persist mock questions and exam totals so UI shows updates after reload
+      try { saveToStorage(STORAGE_KEYS.questions, mockQuestions); } catch (_) { }
+      try { saveToStorage(STORAGE_KEYS.exams, mockExams); } catch (_) { }
+
       return inserted;
     } catch (e: any) {
       throw new Error(e?.message || 'Failed to add questions');
@@ -608,6 +543,7 @@ class ApiService {
     const exam = mockExams.find(e => e._id === examId);
     if (exam) {
       exam.assignedStudents.push(...studentIds);
+      try { saveToStorage(STORAGE_KEYS.exams, mockExams); } catch (_) { }
     }
     return { message: 'Exam assigned successfully' };
   }
@@ -619,6 +555,34 @@ class ApiService {
     const scores = subs.map(s => s.result?.total ?? 0);
     const avg = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
     return { totalSubmissions: subs.length, averageScore: avg, submissions: subs };
+  }
+
+  // Assign all existing students to an exam (useful for retroactive assignment)
+  async assignAllStudents(examId: string) {
+    await delay(500);
+    if (USE_SUPABASE) {
+      try {
+        // supabaseService.getAllUsers returns student rows
+        const students = await supabaseService.getAllUsers();
+        const studentIds = (students || []).map((s: any) => s.id ?? s._id).filter(Boolean);
+        if (studentIds.length === 0) return { message: 'No students found to assign', assigned: 0 };
+        await supabaseService.assignExamToMultipleStudents(examId, studentIds);
+        return { message: 'Assigned to all students', assigned: studentIds.length };
+      } catch (e: any) {
+        throw new Error(e?.message || 'Failed to assign students');
+      }
+    }
+
+    // Mock fallback: add all mock student ids to the exam
+    const exam = mockExams.find(e => e._id === examId);
+    if (exam) {
+      const assigned = mockUsers.filter(u => u.role === 'student').map(u => u.id);
+      exam.assignedStudents = Array.from(new Set([...(exam.assignedStudents || []), ...assigned]));
+      try { saveToStorage(STORAGE_KEYS.exams, mockExams); } catch (_) { }
+      return { message: 'Assigned (mock)', assigned: assigned.length };
+    }
+
+    return { message: 'Exam not found', assigned: 0 };
   }
 }
 
