@@ -29,7 +29,8 @@ const normalizeQuestions = (raw: any[]): Question[] =>
   (raw || []).map((q) => ({
     id: q.id ?? q._id ?? String(Math.random()),
     exam_id: q.exam_id ?? q.examId ?? null,
-    question_text: q.question_text ?? q.text ?? '',
+  // support multiple possible field names from mock or DB (snake_case, camelCase, legacy)
+  question_text: q.question_text ?? q.questionText ?? q.text ?? '',
     options: (q.options ?? []).map((o: any) => ({
       id: o.id ?? o._id ?? String(Math.random()),
       text: o.text ?? o.label ?? '',
