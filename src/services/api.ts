@@ -194,8 +194,19 @@ class ApiService {
       if (!examId) throw new Error('Missing examId');
       if (!answers || typeof answers !== 'object') throw new Error('Invalid answers payload');
 
-      // Use local mockQuestions store
-      const allQuestions = Object.values(mockQuestions).flat() as any[];
+      // For scoring we prefer to fetch authoritative questions. If Supabase is
+      // configured, fetch from DB; otherwise fall back to local mockQuestions.
+      let allQuestions: any[] = [];
+      if (USE_SUPABASE) {
+        try {
+          allQuestions = await supabaseService.getQuestions(examId);
+        } catch (e) {
+          console.warn('api.submitExam: failed to fetch questions from supabase, falling back to local mock', e);
+          allQuestions = Object.values(mockQuestions).flat() as any[];
+        }
+      } else {
+        allQuestions = Object.values(mockQuestions).flat() as any[];
+      }
 
       // Calculate detailed results
       const results = {
@@ -203,59 +214,59 @@ class ApiService {
         physics: { score: 0, total: 0, details: [] as any[] },
         chemistry: { score: 0, total: 0, details: [] as any[] }
       };
-    
-    let totalScore = 0;
-    let totalMarks = 0;
-    
-    Object.keys(answers).forEach(subject => {
-      const subjectAnswers = answers[subject] || [];
-      const questions = allQuestions.filter(q => q.subject === subject && q.examId === examId);
 
-      results[subject as keyof typeof results].total = questions.length * 4; // assume 4 marks per question if marks missing
-      totalMarks += questions.reduce((s, q) => s + (Number(q.marks) || 4), 0);
+      let totalScore = 0;
+      let totalMarks = 0;
 
-      subjectAnswers.forEach((answer: any) => {
-        const question = questions.find(q => (q._id || q.id) === answer.questionId || q.id === answer.questionId);
-        if (question && (question.correctAnswer === answer.selectedAnswer || question.correctOptionId === answer.selectedAnswer)) {
-          results[subject as keyof typeof results].score += Number(question.marks || 4);
-          totalScore += Number(question.marks || 4);
-        }
+      Object.keys(answers).forEach(subject => {
+        const subjectAnswers = answers[subject] || [];
+        const questions = allQuestions.filter(q => (q.subject === subject) && ((q.exam_id === examId) || (q.examId === examId) || (q.examId === String(examId))));
 
-        if (question) {
-          const selectedOption = question.options.find((opt: any) => opt.id === answer.selectedAnswer);
-          const correctOption = question.options.find((opt: any) => opt.id === (question.correctAnswer || question.correctOptionId));
+        results[subject as keyof typeof results].total = questions.length * 4; // fallback assumption
+        totalMarks += questions.reduce((s, q) => s + (Number(q.marks) || 4), 0);
 
-          results[subject as keyof typeof results].details.push({
-            questionId: question._id ?? question.id,
-            questionText: question.questionText ?? question.text,
-            selectedAnswer: selectedOption ? selectedOption.text : 'Not Answered',
-            correctAnswer: correctOption ? correctOption.text : '',
-            isCorrect: (question.correctAnswer || question.correctOptionId) === answer.selectedAnswer,
-            marks: Number(question.marks || 4),
-            marksAwarded: ((question.correctAnswer || question.correctOptionId) === answer.selectedAnswer) ? Number(question.marks || 4) : 0
-          });
-        }
+        subjectAnswers.forEach((answer: any) => {
+          const question = questions.find(q => (q._id || q.id) === answer.questionId || q.id === answer.questionId || q._id === answer.questionId);
+          if (question && (question.correct_answer === answer.selectedAnswer || question.correctAnswer === answer.selectedAnswer || question.correctOptionId === answer.selectedAnswer)) {
+            results[subject as keyof typeof results].score += Number(question.marks || 4);
+            totalScore += Number(question.marks || 4);
+          }
+
+          if (question) {
+            const selectedOption = (question.options || []).find((opt: any) => opt.id === answer.selectedAnswer);
+            const correctOption = (question.options || []).find((opt: any) => opt.id === (question.correct_answer || question.correctAnswer || question.correctOptionId));
+
+            results[subject as keyof typeof results].details.push({
+              questionId: question._id ?? question.id,
+              questionText: question.question_text ?? question.questionText ?? question.text,
+              selectedAnswer: selectedOption ? selectedOption.text : 'Not Answered',
+              correctAnswer: correctOption ? correctOption.text : '',
+              isCorrect: (question.correct_answer || question.correctAnswer || question.correctOptionId) === answer.selectedAnswer,
+              marks: Number(question.marks || 4),
+              marksAwarded: ((question.correct_answer || question.correctAnswer || question.correctOptionId) === answer.selectedAnswer) ? Number(question.marks || 4) : 0
+            });
+          }
+        });
+
+        // Add unanswered questions
+        questions.forEach(question => {
+          const answered = subjectAnswers.find((ans: any) => ans.questionId === (question._id ?? question.id));
+          if (!answered) {
+            const correctOption = (question.options || []).find((opt: any) => opt.id === (question.correct_answer || question.correctAnswer || question.correctOptionId));
+            results[subject as keyof typeof results].details.push({
+              questionId: question._id ?? question.id,
+              questionText: question.question_text ?? question.questionText ?? question.text,
+              selectedAnswer: 'Not Answered',
+              correctAnswer: correctOption ? correctOption.text : '',
+              isCorrect: false,
+              marks: Number(question.marks || 4),
+              marksAwarded: 0
+            });
+          }
+        });
       });
 
-      // Add unanswered questions
-      questions.forEach(question => {
-        const answered = subjectAnswers.find((ans: any) => ans.questionId === (question._id ?? question.id));
-        if (!answered) {
-          const correctOption = question.options.find((opt: any) => opt.id === (question.correctAnswer || question.correctOptionId));
-          results[subject as keyof typeof results].details.push({
-            questionId: question._id ?? question.id,
-            questionText: question.questionText ?? question.text,
-            selectedAnswer: 'Not Answered',
-            correctAnswer: correctOption ? correctOption.text : '',
-            isCorrect: false,
-            marks: Number(question.marks || 4),
-            marksAwarded: 0
-          });
-        }
-      });
-    });
-
-      return {
+      const computed = {
         message: 'Exam submitted successfully',
         results: {
           mathematics: results.mathematics.score,
@@ -266,9 +277,33 @@ class ApiService {
           percentage: totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0,
           details: results
         }
-      };
+      } as any;
+
+      // If Supabase configured, persist submission to DB with required fields
+      if (USE_SUPABASE) {
+        try {
+          const submissionRecord: any = {
+            exam_id: examId,
+            student_id: _studentId ?? null,
+            answers,
+            score: computed.results.total,
+            total_marks: computed.results.totalMarks,
+            time_taken: _timeTaken ?? 0,
+            submitted_at: new Date().toISOString()
+          };
+
+          const saved = await supabaseService.submitExam(submissionRecord);
+          // return DB row if needed
+          return { ...computed, saved };
+        } catch (e: any) {
+          console.warn('api.submitExam: failed to persist to supabase, returning computed results', e);
+          // fall through and return computed results so caller can proceed
+          return computed;
+        }
+      }
+
+      return computed;
     } catch (e: any) {
-      // Keep mock API throwing errors so callers can detect failures
       throw new Error(e?.message || 'Failed to submit exam');
     }
   }
@@ -286,8 +321,18 @@ class ApiService {
         timeTaken,
         submittedAt: new Date().toISOString()
       };
-  mockSubmissions.push(record);
-  try { saveToStorage(STORAGE_KEYS.submissions, mockSubmissions); } catch (_) { }
+      if (USE_SUPABASE) {
+        // When using Supabase we persisted inside submitExam; prefer returning
+        // the saved DB row if available.
+        const saved = (res as any)?.saved ?? null;
+        return {
+          ...res,
+          record: saved ?? record
+        };
+      }
+
+      mockSubmissions.push(record);
+      try { saveToStorage(STORAGE_KEYS.submissions, mockSubmissions); } catch (_) { }
       // Return the same shape as submitExam but attach the stored record for inspection
       return {
         ...res,
@@ -300,17 +345,30 @@ class ApiService {
 
   // store submission and return simple report list for admin
   async storeSubmission(examId: string, studentId: string, answers: any, timeTaken: number) {
+    // If using Supabase, persist directly to DB and return the saved row
+    if (USE_SUPABASE) {
+      try {
+        const res = await this.submitExam(examId, answers, timeTaken, studentId);
+        const saved = (res as any)?.saved ?? null;
+        if (saved) return saved;
+        // fallback: return computed results if saved row not available
+        return { id: Date.now().toString(), examId, studentId, result: (res as any).results, submittedAt: new Date().toISOString() };
+      } catch (e: any) {
+        throw new Error(e?.message || 'Failed to store submission');
+      }
+    }
+
     const res = await this.submitExam(examId, answers, timeTaken);
     const record = {
       id: Date.now().toString(),
       examId,
       studentId,
-      result: res.results,
+      result: (res as any).results,
       submittedAt: new Date().toISOString()
     };
-  mockSubmissions.push(record);
-  try { saveToStorage(STORAGE_KEYS.submissions, mockSubmissions); } catch (_) { }
-  return record;
+    mockSubmissions.push(record);
+    try { saveToStorage(STORAGE_KEYS.submissions, mockSubmissions); } catch (_) { }
+    return record;
   }
 
   // Save metadata about an uploaded Excel sheet (admin-provided name + file info)
